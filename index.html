@@ -35,6 +35,7 @@ button{padding:12px;background:#e31837;color:#fff;border:none;border-radius:8px;
 .btns a,.btns button{padding:7px 12px;font-size:12.5px;border-radius:7px;text-decoration:none;width:auto;margin:0}
 .btns a{background:#eef;color:#333}
 .g{background:#059669}
+.o{background:#f59e0b}
 #alert{position:fixed;bottom:12px;left:12px;right:12px;max-width:440px;margin:auto;background:#151a2e;color:#fff;padding:14px;border-radius:12px;z-index:99;box-shadow:0 10px 30px rgba(0,0,0,.4)}
 #alert button{margin-top:8px;margin-right:6px}
 #toast{position:fixed;top:16px;left:50%;transform:translateX(-50%);background:#151a2e;color:#fff;padding:9px 16px;border-radius:20px;font-size:13px;z-index:100}
@@ -49,6 +50,7 @@ button{padding:12px;background:#e31837;color:#fff;border:none;border-radius:8px;
   <label>👤 Apna Naam</label>
   <input id="uname" placeholder="Rahul Sharma">
   <button class="wide" onclick="login()">🚀 Start Karein</button>
+  <p style="text-align:center;font-size:11.5px;color:#888;margin-top:12px">💡 Tip: Har follow-up par 📅 Reminder daba kar Google Calendar me save karo — phone band hone par bhi reminder bajega!</p>
 </div>
 
 <div id="app" class="hid">
@@ -90,10 +92,8 @@ function save(){localStorage.setItem('hhv',JSON.stringify(DB));if(CUR)localStora
 
 function toast(m){var t=document.getElementById('toast');t.textContent=m;t.classList.remove('hid');setTimeout(function(){t.classList.add('hid')},2500)}
 
-/* ============ SOUND SYSTEM (LOUD + VIBRATION) ============ */
+/* ============ SOUND SYSTEM ============ */
 var AC=null,alarmInt=null;
-
-/* Pehle tap par hi sound unlock ho jata hai */
 function unlockAudio(){
   try{
     if(!AC){var C=window.AudioContext||window.webkitAudioContext;if(C)AC=new C()}
@@ -121,18 +121,12 @@ function beep(){
     }
   }catch(e){}
 }
-
 function vib(){try{navigator.vibrate([400,150,400,150,400])}catch(e){}}
-
-function startAlarm(){
-  stopAlarm();
-  beep();vib();
-  alarmInt=setInterval(function(){beep();vib()},3500);
-}
+function startAlarm(){stopAlarm();beep();vib();alarmInt=setInterval(function(){beep();vib()},3500)}
 function stopAlarm(){if(alarmInt){clearInterval(alarmInt);alarmInt=null}}
 
 function notifTest(){
-  if(!('Notification' in window)){toast('Is browser me notification nahi hai');return}
+  if(!('Notification' in window)){toast('Is browser me notification nahi hai — lekin alarm bajega!');startAlarm();setTimeout(stopAlarm,4000);return}
   if(Notification.permission!=='granted'){
     Notification.requestPermission();
     toast('Pehle Allow dabayein, phir dobara Test dabayein');
@@ -155,7 +149,6 @@ function login(){
   if('Notification' in window&&Notification.permission==='default')Notification.requestPermission();
   enter();
 }
-
 function enter(){
   if(!DB[CUR].list)DB[CUR].list=[];
   document.getElementById('login').classList.add('hid');
@@ -182,8 +175,22 @@ function add(){
   document.getElementById('cx').value='';
   document.getElementById('ph').value='';
   document.getElementById('pt').value='';
-  toast('✅ Save ho gaya');
+  toast('✅ Save ho gaya — 📅 Reminder bhi laga do!');
   render();
+}
+
+/* ============ GOOGLE CALENDAR REMINDER (band hone par bhi bajega!) ============ */
+function gcal(i){
+  var f=DB[CUR].list[i];
+  var s=f.dt.replace(/[-:]/g,'').replace('T','T')+'00';
+  var d=new Date(f.dt);d.setMinutes(d.getMinutes()+30);
+  var e=''+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'T'+pad(d.getHours())+pad(d.getMinutes())+'00';
+  var url='https://calendar.google.com/calendar/render?action=TEMPLATE'
+    +'&text='+encodeURIComponent('🔔 Follow-up: '+f.cx)
+    +'&dates='+s+'/'+e
+    +'&details='+encodeURIComponent('📞 '+f.ph+(f.pt?'\n🤝 '+f.pt:''));
+  window.open(url,'_blank');
+  toast('📅 Calendar khula — Save dabao, reminder pakka bajega!');
 }
 
 function render(){
@@ -207,6 +214,7 @@ function render(){
     '<div class="btns">'+
     '<a href="tel:'+f.ph+'">📞 Call</a>'+
     '<a target="_blank" href="'+wa(f.ph)+'">💬 WhatsApp</a>'+
+    (f.st==='p'?'<button class="o" onclick="gcal('+i+')">📅 Reminder</button>':'')+
     (f.st==='d'?'<button style="background:#888" onclick="ud('+i+')">↩ Undo</button>':'<button class="g" onclick="ud('+i+')">✔ Done</button>')+
     '<button style="background:#888" onclick="dl('+i+')">🗑</button>'+
     '</div></div>';
@@ -223,7 +231,6 @@ function dl(i){DB[CUR].list.splice(i,1);save();render()}
 
 /* ============ ALERT ============ */
 function closeA(){stopAlarm();document.getElementById('alert').classList.add('hid')}
-
 function snooze(){
   var f=window._cf;if(!f)return;
   var d=new Date(Date.now()+600000);
@@ -231,7 +238,6 @@ function snooze(){
   f.nf=0;save();render();closeA();
   toast('⏰ 10 minute baad phir alarm bajega');
 }
-
 function check(){
   if(!CUR||!DB[CUR])return;
   var now=Date.now();
